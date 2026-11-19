@@ -7,7 +7,7 @@
 <meta name="description" content="Дві колоди карток: предмет + суперздібність = ідея винаходу для пітчу.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;800;900&family=Noto+Color+Emoji&display=swap" rel="stylesheet">
 <style>
 /* =========================================================
    БРЕНДБУК — змінюйте кольори й шрифти тут
@@ -15,6 +15,8 @@
 :root {
   --font-main: 'Nunito', 'Segoe UI', system-ui, -apple-system, Roboto, Arial, sans-serif;
   --font-display: 'Nunito', 'Segoe UI', system-ui, -apple-system, Roboto, Arial, sans-serif;
+  /* шрифт емодзі: Noto Color Emoji підвантажується з Google Fonts, щоб нові емодзі (🩴, 🪥…) були видні і на Windows */
+  --font-emoji: 'Apple Color Emoji', 'Noto Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif;
 
   --bg: #FFF7EC;            /* фон сторінки */
   --surface: #FFFFFF;       /* фон лицьового боку карток і панелі */
@@ -51,6 +53,12 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 button, input { font: inherit; color: inherit; }
+.e, .emoji, .result-emoji, .rocket .ic, #btnSound {
+  font-family: var(--font-emoji);
+  font-weight: 400;
+  font-style: normal;
+  text-transform: none;
+}
 
 .app {
   height: 100vh;
@@ -324,10 +332,10 @@ button, input { font: inherit; color: inherit; }
 <body>
 <div class="app">
   <header class="topbar">
-    <h1>💡 Генератор винаходів</h1>
-    <button class="btn btn-primary" id="btnRandom" type="button">🎲 Випадково</button>
-    <button class="btn" id="btnNew" type="button">🙋 Новий винахідник</button>
-    <button class="btn" id="btnShuffle" type="button">🔀 Перемішати колоди</button>
+    <h1><span class="e">💡</span> Генератор винаходів</h1>
+    <button class="btn btn-primary" id="btnRandom" type="button"><span class="e">🎲</span> Випадково</button>
+    <button class="btn" id="btnNew" type="button"><span class="e">🙋</span> Новий винахідник</button>
+    <button class="btn" id="btnShuffle" type="button"><span class="e">🔀</span> Перемішати колоди</button>
     <button class="btn btn-icon" id="btnSound" type="button" aria-pressed="true" title="Звук перевертання">🔊</button>
   </header>
 
@@ -366,9 +374,9 @@ button, input { font: inherit; color: inherit; }
     </div>
 
     <div class="actions">
-      <button class="btn btn-primary" id="btnCopy" type="button">📋 Скопіювати винахід</button>
-      <button class="btn" id="btnNew2" type="button">🙋 Новий винахідник</button>
-      <button class="btn" id="btnRandom2" type="button">🎲 Випадково</button>
+      <button class="btn btn-primary" id="btnCopy" type="button"><span class="e">📋</span> Скопіювати винахід</button>
+      <button class="btn" id="btnNew2" type="button"><span class="e">🙋</span> Новий винахідник</button>
+      <button class="btn" id="btnRandom2" type="button"><span class="e">🎲</span> Випадково</button>
       <span class="toast" id="toast" aria-live="polite"></span>
     </div>
   </div>
