@@ -1,0 +1,699 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Генератор винаходів</title>
+<meta name="description" content="Дві колоди карток: предмет + суперздібність = ідея винаходу для пітчу.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;800;900&display=swap" rel="stylesheet">
+<style>
+/* =========================================================
+   БРЕНДБУК — змінюйте кольори й шрифти тут
+   ========================================================= */
+:root {
+  --font-main: 'Nunito', 'Segoe UI', system-ui, -apple-system, Roboto, Arial, sans-serif;
+  --font-display: 'Nunito', 'Segoe UI', system-ui, -apple-system, Roboto, Arial, sans-serif;
+
+  --bg: #FFF7EC;            /* фон сторінки */
+  --surface: #FFFFFF;       /* фон лицьового боку карток і панелі */
+  --text: #1B1838;          /* основний текст */
+  --text-soft: #4A4668;     /* другорядний текст */
+  --border: #1B1838;        /* контури */
+
+  --deck1: #D9480F;         /* сорочки колоди 1 «ЩО ЗА ВИНАХІД?» */
+  --deck1-dark: #A6360A;
+  --deck1-light: #FFE3D3;
+  --deck2: #5B3FD9;         /* сорочки колоди 2 «ЩО ВІН ВМІЄ?» */
+  --deck2-dark: #3F2AA6;
+  --deck2-light: #E6E0FF;
+  --on-deck: #FFFFFF;       /* номери на сорочках */
+
+  --accent: #0B8A5A;        /* головні кнопки */
+  --accent-dark: #076B45;
+  --on-accent: #FFFFFF;
+  --used-mark: #0B8A5A;     /* позначка ✓ */
+
+  --overlay: rgba(27, 24, 56, .72);
+  --radius: 18px;
+  --shadow: 0 4px 0 rgba(27, 24, 56, .25);
+}
+/* ========================================================= */
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-main);
+  font-weight: 600;
+  -webkit-tap-highlight-color: transparent;
+}
+button, input { font: inherit; color: inherit; }
+
+.app {
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding: clamp(8px, 1.4vh, 16px) clamp(12px, 2vw, 28px);
+  gap: clamp(6px, 1.2vh, 14px);
+  max-width: 1800px;
+  margin: 0 auto;
+}
+
+/* --- Верхня панель --- */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.topbar h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: clamp(22px, 3.6vh, 38px);
+  letter-spacing: .5px;
+  margin-right: auto;
+}
+.btn {
+  border: 3px solid var(--border);
+  background: var(--surface);
+  border-radius: 999px;
+  padding: .45em 1em;
+  font-weight: 800;
+  font-size: clamp(15px, 2.2vh, 20px);
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  transition: transform .08s;
+  white-space: nowrap;
+}
+.btn:active { transform: translateY(3px); box-shadow: none; }
+.btn:focus-visible, .card:focus-visible, .field input:focus-visible { outline: 4px solid var(--accent); outline-offset: 3px; }
+.btn-primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent-dark); }
+.btn-icon { padding: .45em .7em; }
+
+/* --- Колоди --- */
+.decks {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  gap: clamp(6px, 1.4vh, 16px);
+}
+.deck {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: clamp(8px, 1.2vw, 16px);
+  align-items: stretch;
+}
+.deck-label {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  text-align: center;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: clamp(16px, 2.6vh, 26px);
+  color: var(--on-deck);
+  border-radius: var(--radius);
+  padding: 10px 6px;
+  line-height: 1.05;
+}
+.deck-label small { display: block; font-size: .7em; opacity: .9; }
+.deck[data-deck="1"] .deck-label { background: var(--deck1); }
+.deck[data-deck="2"] .deck-label { background: var(--deck2); }
+
+.grid {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  gap: clamp(6px, 1vw, 14px);
+}
+
+/* --- Картка --- */
+.card {
+  position: relative;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  perspective: 900px;
+  min-height: 0;
+  border-radius: var(--radius);
+}
+.card-inner {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transition: transform .6s cubic-bezier(.4, .2, .2, 1);
+}
+.card.flipped .card-inner { transform: rotateY(180deg); }
+.side {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid var(--border);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.back { color: var(--on-deck); }
+.deck[data-deck="1"] .back {
+  background:
+    radial-gradient(circle at 20% 20%, rgba(255,255,255,.16) 0 18%, transparent 19%),
+    radial-gradient(circle at 85% 90%, rgba(255,255,255,.12) 0 22%, transparent 23%),
+    var(--deck1);
+}
+.deck[data-deck="2"] .back {
+  background:
+    repeating-linear-gradient(45deg, rgba(255,255,255,.09) 0 10px, transparent 10px 22px),
+    var(--deck2);
+}
+.num {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: clamp(40px, 9vh, 96px);
+  line-height: 1;
+  text-shadow: 0 3px 0 rgba(0,0,0,.25);
+}
+.front {
+  transform: rotateY(180deg);
+  background: var(--surface);
+  padding: 6px 8px;
+  gap: 2px;
+}
+.deck[data-deck="1"] .front { background: var(--deck1-light); border-color: var(--deck1-dark); }
+.deck[data-deck="2"] .front { background: var(--deck2-light); border-color: var(--deck2-dark); }
+.emoji { font-size: clamp(28px, 5.8vh, 64px); line-height: 1.1; }
+.label {
+  font-weight: 800;
+  font-size: clamp(14px, 2.75vh, 26px);
+  line-height: 1.12;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.front .mini-num {
+  position: absolute; top: 4px; left: 8px;
+  font-size: clamp(11px, 1.6vh, 15px); font-weight: 900; color: var(--text-soft);
+}
+
+/* Використані картки */
+.card.used:not(.flipped) .card-inner { opacity: .42; }
+.card.used:not(.flipped)::after {
+  content: '✓';
+  position: absolute; top: -8px; right: -8px;
+  width: clamp(26px, 4vh, 38px); height: clamp(26px, 4vh, 38px);
+  display: grid; place-items: center;
+  border-radius: 50%;
+  background: var(--used-mark); color: #fff;
+  border: 3px solid var(--surface);
+  font-weight: 900; font-size: clamp(14px, 2.2vh, 20px);
+  z-index: 2;
+}
+
+/* --- Панель результату --- */
+.modal {
+  position: fixed; inset: 0;
+  background: var(--overlay);
+  display: none;
+  align-items: center; justify-content: center;
+  padding: 16px;
+  z-index: 20;
+}
+.modal.open { display: flex; }
+.panel {
+  position: relative;
+  background: var(--surface);
+  border: 4px solid var(--border);
+  border-radius: 26px;
+  width: min(1100px, 100%);
+  max-height: 100%;
+  overflow: auto;
+  padding: clamp(14px, 2.6vh, 28px) clamp(16px, 3vw, 36px);
+  display: grid;
+  gap: clamp(8px, 1.6vh, 16px);
+  animation: pop .35s ease-out;
+}
+@keyframes pop { from { transform: scale(.9); opacity: 0; } to { transform: none; opacity: 1; } }
+.close-x {
+  position: absolute; top: 10px; right: 12px;
+  border: 0; background: transparent; cursor: pointer;
+  font-size: 30px; line-height: 1; padding: 6px 10px; font-weight: 900; color: var(--text-soft);
+}
+.result-kicker { margin: 0; font-size: clamp(16px, 2.6vh, 24px); color: var(--text-soft); font-weight: 800; }
+.result-phrase {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: clamp(24px, 5.2vh, 52px);
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+.result-phrase .p1 { color: var(--deck1-dark); }
+.result-phrase .p2 { color: var(--deck2-dark); }
+.result-emoji { font-size: 1.05em; text-transform: none; margin-right: .2em; }
+
+.field { display: grid; gap: 4px; }
+.field label { font-weight: 800; font-size: clamp(15px, 2.2vh, 20px); }
+.field label span { color: var(--text-soft); font-weight: 600; }
+.field input {
+  border: 3px solid var(--border);
+  border-radius: 14px;
+  padding: .4em .7em;
+  font-size: clamp(20px, 3.4vh, 32px);
+  font-weight: 800;
+  background: var(--bg);
+  width: 100%;
+}
+
+.rocket h2 { margin: 0 0 6px; font-size: clamp(16px, 2.6vh, 24px); }
+.rocket ol {
+  list-style: none; margin: 0; padding: 0;
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;
+}
+.rocket li {
+  background: var(--bg);
+  border: 3px solid var(--border);
+  border-radius: 14px;
+  padding: 8px 10px;
+  display: grid; gap: 2px; align-content: start;
+}
+.rocket .ic { font-size: clamp(22px, 3.8vh, 36px); line-height: 1; }
+.rocket b { font-size: clamp(15px, 2.3vh, 21px); }
+.rocket q { font-size: clamp(15px, 2.3vh, 21px); quotes: '«' '»'; font-weight: 700; }
+
+.actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.toast { color: var(--accent-dark); font-weight: 800; align-self: center; min-height: 1em; }
+
+#confetti { position: fixed; inset: 0; pointer-events: none; z-index: 30; }
+
+/* --- Телефон / вузький екран --- */
+@media (max-width: 760px), (max-aspect-ratio: 1/1) {
+  .app { height: auto; min-height: 100dvh; }
+  .topbar h1 { width: 100%; font-size: 26px; }
+  .topbar .btn { font-size: 15px; }
+  .decks { grid-template-rows: auto auto; }
+  .deck { grid-template-columns: 1fr; }
+  .deck-label { writing-mode: horizontal-tb; transform: none; padding: 8px 12px; font-size: 20px; }
+  .deck-label small { display: inline; margin-left: .4em; }
+  .grid { grid-template-columns: repeat(4, 1fr); grid-template-rows: none; grid-auto-rows: 1fr; }
+  .card { aspect-ratio: 3 / 4; }
+  .num { font-size: 44px; }
+  .emoji { font-size: 34px; }
+  .label { font-size: 13px; }
+  .rocket ol { grid-template-columns: 1fr; }
+  .rocket li { grid-template-columns: auto auto 1fr; gap: 8px; align-items: center; }
+  .result-phrase { font-size: 26px; }
+  .field input { font-size: 20px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .card-inner { transition-duration: .01s; }
+  .panel { animation: none; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <h1>💡 Генератор винаходів</h1>
+    <button class="btn btn-primary" id="btnRandom" type="button">🎲 Випадково</button>
+    <button class="btn" id="btnNew" type="button">🙋 Новий винахідник</button>
+    <button class="btn" id="btnShuffle" type="button">🔀 Перемішати колоди</button>
+    <button class="btn btn-icon" id="btnSound" type="button" aria-pressed="true" title="Звук перевертання">🔊</button>
+  </header>
+
+  <main class="decks">
+    <section class="deck" data-deck="1" aria-label="Колода 1: Що за винахід?">
+      <div class="deck-label">ЩО ЗА ВИНАХІД?<small>колода 1</small></div>
+      <div class="grid" id="grid1"></div>
+    </section>
+    <section class="deck" data-deck="2" aria-label="Колода 2: Що він вміє?">
+      <div class="deck-label">ЩО ВІН ВМІЄ?<small>колода 2</small></div>
+      <div class="grid" id="grid2"></div>
+    </section>
+  </main>
+</div>
+
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="resultPhrase">
+  <div class="panel">
+    <button class="close-x" id="btnClose" type="button" aria-label="Закрити панель і подивитися на картки">×</button>
+    <p class="result-kicker">Ваш винахід:</p>
+    <p class="result-phrase" id="resultPhrase"></p>
+
+    <div class="field">
+      <label for="inventionName">Назва винаходу <span>(необов'язково)</span></label>
+      <input id="inventionName" type="text" maxlength="60" autocomplete="off" placeholder="Наприклад: Качкоприбирач 3000">
+    </div>
+
+    <div class="rocket">
+      <h2>Ракета для виступу</h2>
+      <ol>
+        <li><span class="ic">🚀</span><b>Старт</b><q>Уявіть, що…</q></li>
+        <li><span class="ic">💡</span><b>Що це</b><q>Мій винахід — це…</q></li>
+        <li><span class="ic">❓</span><b>Навіщо</b><q>Він потрібен, бо…</q></li>
+        <li><span class="ic">📌</span><b>Приклад</b><q>Наприклад, …</q></li>
+        <li><span class="ic">🏁</span><b>Фініш</b><q>Тому мій винахід… Дякую!</q></li>
+      </ol>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="btnCopy" type="button">📋 Скопіювати винахід</button>
+      <button class="btn" id="btnNew2" type="button">🙋 Новий винахідник</button>
+      <button class="btn" id="btnRandom2" type="button">🎲 Випадково</button>
+      <span class="toast" id="toast" aria-live="polite"></span>
+    </div>
+  </div>
+</div>
+
+<canvas id="confetti"></canvas>
+
+<script>
+/* =========================================================
+   КАРТКИ — редагуйте тут
+   Колода 1: name — в однині, gender — рід: 'ч' | 'ж' | 'с'
+   Колода 2: text — рядок, якщо форма не змінюється за родом,
+             або об'єкт { ч: '…', ж: '…', с: '…' }, якщо змінюється.
+   ========================================================= */
+const DECK_INVENTIONS = [
+  { emoji: '🧦', name: 'шкарпетка без пари', gender: 'ж' },
+  { emoji: '🩴', name: 'бабусин капець',     gender: 'ч' },
+  { emoji: '🌵', name: 'кактус',             gender: 'ч' },
+  { emoji: '🍌', name: 'банан',              gender: 'ч' },
+  { emoji: '🦆', name: 'гумова качечка',     gender: 'ж' },
+  { emoji: '🍳', name: 'сковорідка',         gender: 'ж' },
+  { emoji: '🎒', name: 'шкільний рюкзак',    gender: 'ч' },
+  { emoji: '🪥', name: 'зубна щітка',        gender: 'ж' },
+  { emoji: '🛁', name: 'ванна',              gender: 'ж' },
+  { emoji: '🍞', name: 'батон',              gender: 'ч' },
+  { emoji: '🧽', name: 'губка для посуду',   gender: 'ж' },
+  { emoji: '🪑', name: 'табуретка',          gender: 'ж' },
+];
+
+const DECK_POWERS = [
+  { emoji: '🧠', text: 'читає думки' },
+  { emoji: '🕊️', text: 'вміє літати' },
+  { emoji: '🧹', text: { ч: 'сам прибирає кімнату', ж: 'сама прибирає кімнату', с: 'саме прибирає кімнату' } },
+  { emoji: '🐶', text: 'перекладає мову тварин' },
+  { emoji: '👻', text: { ч: 'робить невидимим того, хто ним користується',
+                         ж: 'робить невидимим того, хто нею користується',
+                         с: 'робить невидимим того, хто ним користується' } },
+  { emoji: '🌀', text: 'телепортує куди завгодно' },
+  { emoji: '🍳', text: 'готує сніданок' },
+  { emoji: '🧭', text: 'ніколи не губиться' },
+  { emoji: '😂', text: 'розсмішує, коли сумно' },
+  { emoji: '⏸️', text: 'зупиняє час на 5 хвилин' },
+  { emoji: '✨', text: 'світиться в темряві' },
+  { emoji: '❓', text: 'відповідає на будь-яке питання' },
+];
+
+const WHICH = { ч: 'який', ж: 'яка', с: 'яке' };
+/* ========================================================= */
+
+const FLIP_MS = 600;
+const state = {
+  order: [[], []],          // order[d][position] = індекс картки в даних
+  used: [new Set(), new Set()],
+  open: [null, null],       // позиція відкритої картки в кожній колоді
+  sound: true,
+};
+const grids = [document.getElementById('grid1'), document.getElementById('grid2')];
+const decksData = [DECK_INVENTIONS, DECK_POWERS];
+const modal = document.getElementById('modal');
+const nameInput = document.getElementById('inventionName');
+let resultTimer = null;
+
+function shuffle(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+function powerText(power, gender) {
+  if (typeof power.text === 'string') return power.text;
+  return power.text[gender] || power.text.ч;
+}
+function currentGender() {
+  const p = state.open[0];
+  return p === null ? 'ч' : DECK_INVENTIONS[state.order[0][p]].gender;
+}
+
+/* ---------- Побудова колод ---------- */
+function build() {
+  [0, 1].forEach(d => {
+    grids[d].innerHTML = '';
+    state.order[d].forEach((dataIdx, pos) => {
+      const n = pos + 1;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'card';
+      btn.dataset.deck = d;
+      btn.dataset.pos = pos;
+      btn.setAttribute('aria-label', `Колода ${d + 1}, картка ${n}`);
+      btn.innerHTML = `
+        <div class="card-inner">
+          <div class="side back"><span class="num">${n}</span></div>
+          <div class="side front"><span class="mini-num">${n}</span><span class="emoji"></span><span class="label"></span></div>
+        </div>`;
+      btn.addEventListener('click', () => onCardClick(d, pos));
+      grids[d].appendChild(btn);
+    });
+  });
+  refresh();
+}
+function cardEl(d, pos) { return grids[d].children[pos]; }
+
+function fillFace(d, pos) {
+  const el = cardEl(d, pos);
+  const item = decksData[d][state.order[d][pos]];
+  el.querySelector('.emoji').textContent = item.emoji;
+  el.querySelector('.label').textContent = d === 0 ? item.name : powerText(item, currentGender());
+}
+
+function refresh() {
+  [0, 1].forEach(d => {
+    state.order[d].forEach((_, pos) => {
+      const el = cardEl(d, pos);
+      const isOpen = state.open[d] === pos;
+      el.classList.toggle('flipped', isOpen);
+      el.classList.toggle('used', state.used[d].has(pos));
+      el.setAttribute('aria-pressed', isOpen ? 'true' : 'false');
+    });
+  });
+  if (state.open[1] !== null) fillFace(1, state.open[1]); // узгодити рід
+}
+
+/* ---------- Логіка ---------- */
+function onCardClick(d, pos) {
+  if (state.open[d] === pos) {           // повторний клік — закрити
+    state.open[d] = null;
+    hideResult();
+    refresh();
+    return;
+  }
+  if (state.open[0] !== null && state.open[1] !== null) {
+    // обидві вже відкриті — починаємо з цієї картки, другу колоду не чіпаємо
+    hideResult();
+  }
+  fillFace(d, pos);
+  state.open[d] = pos;
+  playFlip();
+  refresh();
+  maybeShowResult();
+}
+
+function maybeShowResult() {
+  clearTimeout(resultTimer);
+  if (state.open[0] === null || state.open[1] === null) return;
+  resultTimer = setTimeout(showResult, FLIP_MS + 150);
+}
+
+function resultParts() {
+  const inv = DECK_INVENTIONS[state.order[0][state.open[0]]];
+  const pow = DECK_POWERS[state.order[1][state.open[1]]];
+  return { inv, pow, which: WHICH[inv.gender], action: powerText(pow, inv.gender) };
+}
+
+function showResult() {
+  const { inv, pow, which, action } = resultParts();
+  const ph = document.getElementById('resultPhrase');
+  ph.innerHTML = '';
+  const e = document.createElement('span'); e.className = 'result-emoji'; e.textContent = inv.emoji + pow.emoji;
+  const a = document.createElement('span'); a.className = 'p1'; a.textContent = inv.name + ', ';
+  const b = document.createElement('span'); b.className = 'p2'; b.textContent = which + ' ' + action;
+  ph.append(e, a, b);
+  document.getElementById('toast').textContent = '';
+  modal.classList.add('open');
+  confetti();
+}
+function hideResult() {
+  clearTimeout(resultTimer);
+  modal.classList.remove('open');
+}
+
+function closeAll() {
+  [0, 1].forEach(d => {
+    if (state.open[d] !== null) state.used[d].add(state.open[d]);
+    state.open[d] = null;
+  });
+  nameInput.value = '';
+  hideResult();
+  refresh();
+}
+
+function newInventor() { closeAll(); }
+
+function pickRandom(d) {
+  const all = state.order[d].map((_, i) => i);
+  const fresh = all.filter(i => !state.used[d].has(i));
+  const pool = fresh.length ? fresh : all;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+let randomBusy = false;
+function randomInvention() {
+  if (randomBusy) return;
+  randomBusy = true;
+  const hadOpen = state.open[0] !== null || state.open[1] !== null;
+  closeAll();
+  const p1 = pickRandom(0), p2 = pickRandom(1);
+  const start = hadOpen ? FLIP_MS : 0;
+  setTimeout(() => onCardClick(0, p1), start);
+  setTimeout(() => { onCardClick(1, p2); randomBusy = false; }, start + FLIP_MS + 150);
+}
+
+function shuffleDecks() {
+  hideResult();
+  nameInput.value = '';
+  state.open = [null, null];
+  state.used = [new Set(), new Set()];
+  state.order = [shuffle(DECK_INVENTIONS.map((_, i) => i)), shuffle(DECK_POWERS.map((_, i) => i))];
+  refresh();
+  // дочекатися, поки картки перевернуться назад, і лише тоді змінити вміст
+  setTimeout(() => {
+    [0, 1].forEach(d => state.order[d].forEach((_, pos) => {
+      const el = cardEl(d, pos);
+      el.querySelector('.emoji').textContent = '';
+      el.querySelector('.label').textContent = '';
+    }));
+  }, FLIP_MS);
+}
+
+/* ---------- Копіювання ---------- */
+function copyText() {
+  const { inv, pow, which, action } = resultParts();
+  const phrase = `${inv.name}, ${which} ${action}`;
+  const cap = phrase.charAt(0).toUpperCase() + phrase.slice(1);
+  const name = nameInput.value.trim();
+  const text = `${inv.emoji}${pow.emoji} ` + (name ? `«${name}» — ${phrase}` : cap);
+  const done = () => { document.getElementById('toast').textContent = '✓ Скопійовано!'; };
+  const fallback = () => {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); done(); } catch (e) { prompt('Скопіюйте текст:', text); }
+    ta.remove();
+  };
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text).then(done, fallback);
+  } else fallback();
+}
+
+/* ---------- Звук (Web Audio) ---------- */
+let audioCtx = null;
+function playFlip() {
+  if (!state.sound) return;
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    const ctx = audioCtx, t = ctx.currentTime, dur = 0.18;
+    const buf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * dur), ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
+    const src = ctx.createBufferSource(); src.buffer = buf;
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'bandpass'; filter.Q.value = 0.8;
+    filter.frequency.setValueAtTime(900, t);
+    filter.frequency.exponentialRampToValueAtTime(2600, t + dur);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(0.12, t + 0.03);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    src.connect(filter).connect(gain).connect(ctx.destination);
+    src.start(t); src.stop(t + dur);
+  } catch (e) { /* без звуку */ }
+}
+function setSound(on) {
+  state.sound = on;
+  const b = document.getElementById('btnSound');
+  b.textContent = on ? '🔊' : '🔇';
+  b.setAttribute('aria-pressed', on ? 'true' : 'false');
+  b.title = on ? 'Вимкнути звук' : 'Увімкнути звук';
+  try { localStorage.setItem('vynakhody-sound', on ? '1' : '0'); } catch (e) {}
+}
+
+/* ---------- Конфеті ---------- */
+const cv = document.getElementById('confetti');
+const cx = cv.getContext('2d');
+let parts = [], confettiRAF = null;
+function confetti() {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const css = getComputedStyle(document.documentElement);
+  const colors = ['--deck1', '--deck2', '--accent'].map(v => css.getPropertyValue(v).trim()).concat(['#FFC300', '#FF4D8D', '#22B8F0']);
+  cv.width = innerWidth * devicePixelRatio; cv.height = innerHeight * devicePixelRatio;
+  cx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+  for (let i = 0; i < 160; i++) {
+    const fromLeft = i % 2 === 0;
+    parts.push({
+      x: fromLeft ? -10 : innerWidth + 10, y: innerHeight * (0.55 + Math.random() * 0.3),
+      vx: (fromLeft ? 1 : -1) * (4 + Math.random() * 9), vy: -(9 + Math.random() * 10),
+      w: 7 + Math.random() * 7, h: 4 + Math.random() * 6,
+      r: Math.random() * Math.PI, vr: (Math.random() - .5) * .3,
+      c: colors[Math.floor(Math.random() * colors.length)], life: 0,
+    });
+  }
+  if (!confettiRAF) confettiRAF = requestAnimationFrame(tick);
+}
+function tick() {
+  cx.clearRect(0, 0, innerWidth, innerHeight);
+  parts.forEach(p => {
+    p.vy += 0.32; p.vx *= 0.99; p.x += p.vx; p.y += p.vy; p.r += p.vr; p.life++;
+    cx.save(); cx.translate(p.x, p.y); cx.rotate(p.r);
+    cx.fillStyle = p.c; cx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h * Math.abs(Math.cos(p.life / 6)));
+    cx.restore();
+  });
+  parts = parts.filter(p => p.y < innerHeight + 30 && p.life < 400);
+  confettiRAF = parts.length ? requestAnimationFrame(tick) : (cx.clearRect(0, 0, innerWidth, innerHeight), null);
+}
+
+/* ---------- Події ---------- */
+document.getElementById('btnRandom').addEventListener('click', randomInvention);
+document.getElementById('btnRandom2').addEventListener('click', randomInvention);
+document.getElementById('btnNew').addEventListener('click', newInventor);
+document.getElementById('btnNew2').addEventListener('click', newInventor);
+document.getElementById('btnShuffle').addEventListener('click', shuffleDecks);
+document.getElementById('btnSound').addEventListener('click', () => setSound(!state.sound));
+document.getElementById('btnCopy').addEventListener('click', copyText);
+document.getElementById('btnClose').addEventListener('click', hideResult);
+modal.addEventListener('click', e => { if (e.target === modal) hideResult(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') hideResult(); });
+
+/* ---------- Старт ---------- */
+(function init() {
+  let snd = true;
+  try { snd = localStorage.getItem('vynakhody-sound') !== '0'; } catch (e) {}
+  setSound(snd);
+  state.order = [shuffle(DECK_INVENTIONS.map((_, i) => i)), shuffle(DECK_POWERS.map((_, i) => i))];
+  build();
+})();
+</script>
+</body>
+</html>
